@@ -1,0 +1,94 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import {
+  SESClient,
+  CreateCustomVerificationEmailTemplateCommand,
+} from "@aws-sdk/client-ses";
+
+const createCustomVerificationEmailTemplate: AppBlock = {
+  name: "Create Custom Verification Email Template",
+  description: "Creates a new custom verification email template.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        TemplateName: {
+          name: "Template Name",
+          description: "The name of the custom verification email template.",
+          type: "string",
+          required: true,
+        },
+        FromEmailAddress: {
+          name: "From Email Address",
+          description:
+            "The email address that the custom verification email is sent from.",
+          type: "string",
+          required: true,
+        },
+        TemplateSubject: {
+          name: "Template Subject",
+          description: "The subject line of the custom verification email.",
+          type: "string",
+          required: true,
+        },
+        TemplateContent: {
+          name: "Template Content",
+          description: "The content of the custom verification email.",
+          type: "string",
+          required: true,
+        },
+        SuccessRedirectionURL: {
+          name: "Success Redirection URL",
+          description:
+            "The URL that the recipient of the verification email is sent to if his or her address is successfully verified.",
+          type: "string",
+          required: true,
+        },
+        FailureRedirectionURL: {
+          name: "Failure Redirection URL",
+          description:
+            "The URL that the recipient of the verification email is sent to if his or her address is not successfully verified.",
+          type: "string",
+          required: true,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new SESClient({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command = new CreateCustomVerificationEmailTemplateCommand(
+          commandInput as any,
+        );
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Create Custom Verification Email Template Result",
+      description:
+        "Result from CreateCustomVerificationEmailTemplate operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        additionalProperties: true,
+      },
+    },
+  },
+};
+
+export default createCustomVerificationEmailTemplate;

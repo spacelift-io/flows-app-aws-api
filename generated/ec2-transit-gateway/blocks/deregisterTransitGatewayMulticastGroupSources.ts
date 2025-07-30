@@ -1,0 +1,109 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import {
+  EC2Client,
+  DeregisterTransitGatewayMulticastGroupSourcesCommand,
+} from "@aws-sdk/client-ec2";
+
+const deregisterTransitGatewayMulticastGroupSources: AppBlock = {
+  name: "Deregister Transit Gateway Multicast Group Sources",
+  description:
+    "Deregisters the specified sources (network interfaces) from the transit gateway multicast group.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        TransitGatewayMulticastDomainId: {
+          name: "Transit Gateway Multicast Domain Id",
+          description: "The ID of the transit gateway multicast domain.",
+          type: "string",
+          required: false,
+        },
+        GroupIpAddress: {
+          name: "Group Ip Address",
+          description:
+            "The IP address assigned to the transit gateway multicast group.",
+          type: "string",
+          required: false,
+        },
+        NetworkInterfaceIds: {
+          name: "Network Interface Ids",
+          description: "The IDs of the group sources' network interfaces.",
+          type: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+          required: false,
+        },
+        DryRun: {
+          name: "Dry Run",
+          description:
+            "Checks whether you have the required permissions for the action, without actually making the request, and provides an error response.",
+          type: "boolean",
+          required: false,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new EC2Client({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command =
+          new DeregisterTransitGatewayMulticastGroupSourcesCommand(
+            commandInput as any,
+          );
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Deregister Transit Gateway Multicast Group Sources Result",
+      description:
+        "Result from DeregisterTransitGatewayMulticastGroupSources operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        properties: {
+          DeregisteredMulticastGroupSources: {
+            type: "object",
+            properties: {
+              TransitGatewayMulticastDomainId: {
+                type: "string",
+              },
+              DeregisteredNetworkInterfaceIds: {
+                type: "array",
+                items: {
+                  type: "string",
+                },
+              },
+              GroupIpAddress: {
+                type: "string",
+              },
+            },
+            additionalProperties: false,
+            description: "Information about the deregistered group sources.",
+          },
+        },
+        additionalProperties: true,
+      },
+    },
+  },
+};
+
+export default deregisterTransitGatewayMulticastGroupSources;

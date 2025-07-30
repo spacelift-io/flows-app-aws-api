@@ -1,0 +1,177 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import {
+  DynamoDBClient,
+  ExecuteStatementCommand,
+} from "@aws-sdk/client-dynamodb";
+
+const executeStatement: AppBlock = {
+  name: "Execute Statement",
+  description:
+    "This operation allows you to perform reads and singleton writes on data stored in DynamoDB, using PartiQL.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        Statement: {
+          name: "Statement",
+          description:
+            "The PartiQL statement representing the operation to run.",
+          type: "string",
+          required: true,
+        },
+        Parameters: {
+          name: "Parameters",
+          description: "The parameters for the PartiQL statement, if any.",
+          type: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+          required: false,
+        },
+        ConsistentRead: {
+          name: "Consistent Read",
+          description: "The consistency of a read operation.",
+          type: "boolean",
+          required: false,
+        },
+        NextToken: {
+          name: "Next Token",
+          description:
+            "Set this value to get remaining results, if NextToken was returned in the statement response.",
+          type: "string",
+          required: false,
+        },
+        ReturnConsumedCapacity: {
+          name: "Return Consumed Capacity",
+          description:
+            "Determines the level of detail about either provisioned or on-demand throughput consumption that is returned in the response: INDEXES - The response includes the aggregate ConsumedCapacity for the operation, together with ConsumedCapacity for each table and secondary index that was accessed.",
+          type: "string",
+          required: false,
+        },
+        Limit: {
+          name: "Limit",
+          description:
+            "The maximum number of items to evaluate (not necessarily the number of matching items).",
+          type: "number",
+          required: false,
+        },
+        ReturnValuesOnConditionCheckFailure: {
+          name: "Return Values On Condition Check Failure",
+          description:
+            "An optional parameter that returns the item attributes for an ExecuteStatement operation that failed a condition check.",
+          type: "string",
+          required: false,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new DynamoDBClient({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command = new ExecuteStatementCommand(commandInput as any);
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Execute Statement Result",
+      description: "Result from ExecuteStatement operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        properties: {
+          Items: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: {
+                type: "string",
+              },
+            },
+            description:
+              "If a read operation was used, this property will contain the result of the read operation; a map of attribute names and their values.",
+          },
+          NextToken: {
+            type: "string",
+            description:
+              "If the response of a read request exceeds the response payload limit DynamoDB will set this value in the response.",
+          },
+          ConsumedCapacity: {
+            type: "object",
+            properties: {
+              TableName: {
+                type: "string",
+              },
+              CapacityUnits: {
+                type: "number",
+              },
+              ReadCapacityUnits: {
+                type: "number",
+              },
+              WriteCapacityUnits: {
+                type: "number",
+              },
+              Table: {
+                type: "object",
+                properties: {
+                  ReadCapacityUnits: {
+                    type: "number",
+                  },
+                  WriteCapacityUnits: {
+                    type: "number",
+                  },
+                  CapacityUnits: {
+                    type: "number",
+                  },
+                },
+                additionalProperties: false,
+              },
+              LocalSecondaryIndexes: {
+                type: "object",
+                additionalProperties: {
+                  type: "object",
+                },
+              },
+              GlobalSecondaryIndexes: {
+                type: "object",
+                additionalProperties: {
+                  type: "object",
+                },
+              },
+            },
+            additionalProperties: false,
+            description: "The capacity units consumed by an operation.",
+          },
+          LastEvaluatedKey: {
+            type: "object",
+            additionalProperties: {
+              type: "string",
+            },
+            description:
+              "The primary key of the item where the operation stopped, inclusive of the previous result set.",
+          },
+        },
+        additionalProperties: true,
+      },
+    },
+  },
+};
+
+export default executeStatement;

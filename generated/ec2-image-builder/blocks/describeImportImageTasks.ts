@@ -1,0 +1,248 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import {
+  EC2Client,
+  DescribeImportImageTasksCommand,
+} from "@aws-sdk/client-ec2";
+
+const describeImportImageTasks: AppBlock = {
+  name: "Describe Import Image Tasks",
+  description:
+    "Displays details about an import virtual machine or import snapshot tasks that are already created.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        DryRun: {
+          name: "Dry Run",
+          description:
+            "Checks whether you have the required permissions for the action, without actually making the request, and provides an error response.",
+          type: "boolean",
+          required: false,
+        },
+        Filters: {
+          name: "Filters",
+          description:
+            "Filter tasks using the task-state filter and one of the following values: active, completed, deleting, or deleted.",
+          type: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                Name: {
+                  type: "string",
+                },
+                Values: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                  },
+                },
+              },
+              additionalProperties: false,
+            },
+          },
+          required: false,
+        },
+        ImportTaskIds: {
+          name: "Import Task Ids",
+          description: "The IDs of the import image tasks.",
+          type: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+          required: false,
+        },
+        MaxResults: {
+          name: "Max Results",
+          description:
+            "The maximum number of results to return in a single call.",
+          type: "number",
+          required: false,
+        },
+        NextToken: {
+          name: "Next Token",
+          description: "A token that indicates the next page of results.",
+          type: "string",
+          required: false,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new EC2Client({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command = new DescribeImportImageTasksCommand(
+          commandInput as any,
+        );
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Describe Import Image Tasks Result",
+      description: "Result from DescribeImportImageTasks operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        properties: {
+          ImportImageTasks: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                Architecture: {
+                  type: "string",
+                },
+                Description: {
+                  type: "string",
+                },
+                Encrypted: {
+                  type: "boolean",
+                },
+                Hypervisor: {
+                  type: "string",
+                },
+                ImageId: {
+                  type: "string",
+                },
+                ImportTaskId: {
+                  type: "string",
+                },
+                KmsKeyId: {
+                  type: "string",
+                },
+                LicenseType: {
+                  type: "string",
+                },
+                Platform: {
+                  type: "string",
+                },
+                Progress: {
+                  type: "string",
+                },
+                SnapshotDetails: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      Description: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      DeviceName: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      DiskImageSize: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      Format: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      Progress: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      SnapshotId: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      Status: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      StatusMessage: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      Url: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      UserBucket: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                    },
+                    additionalProperties: false,
+                  },
+                },
+                Status: {
+                  type: "string",
+                },
+                StatusMessage: {
+                  type: "string",
+                },
+                Tags: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      Key: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      Value: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                    },
+                    additionalProperties: false,
+                  },
+                },
+                LicenseSpecifications: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      LicenseConfigurationArn: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                    },
+                    additionalProperties: false,
+                  },
+                },
+                UsageOperation: {
+                  type: "string",
+                },
+                BootMode: {
+                  type: "string",
+                },
+              },
+              additionalProperties: false,
+            },
+            description:
+              "A list of zero or more import image tasks that are currently active or were completed or canceled in the previous 7 days.",
+          },
+          NextToken: {
+            type: "string",
+            description: "The token to use to get the next page of results.",
+          },
+        },
+        additionalProperties: true,
+      },
+    },
+  },
+};
+
+export default describeImportImageTasks;

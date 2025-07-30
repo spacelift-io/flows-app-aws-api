@@ -1,0 +1,102 @@
+name: Deploy AWS API App
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: 'Name of the AWS API app to deploy (e.g., "secrets-manager")'
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    name: Deploy AWS API App to R2 (${{ inputs.app_name }})
+    runs-on: ubuntu-latest
+    environment: Deployment
+    defaults:
+      run:
+        working-directory: generated/${{ inputs.app_name }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: generated/${{ inputs.app_name }}/package-lock.json
+
+      - name: Validate app exists
+        run: |
+          if [ ! -f "VERSION" ]; then
+            echo "Error: VERSION file not found"
+            exit 1
+          fi
+          
+          if [ ! -f "package.json" ]; then
+            echo "Error: package.json not found"
+            exit 1
+          fi
+
+      - name: Read version from VERSION file
+        id: version
+        run: |
+          VERSION=$(cat VERSION | tr -d '\n')
+          if [ -z "$VERSION" ]; then
+            echo "Error: VERSION file is empty"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Deploying ${{ inputs.app_name }} version $VERSION"
+
+      - name: Install app dependencies
+        run: npm ci
+
+      - name: Bundle app
+        run: npm run bundle
+
+      - name: Create tarball and calculate checksum
+        id: package
+        run: |
+          if [ ! -f "bundle.tar.gz" ]; then
+            echo "Error: bundle.tar.gz not found after bundling"
+            exit 1
+          fi
+          CHECKSUM=$(sha256sum bundle.tar.gz | cut -d' ' -f1)
+          echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
+          echo "Bundle checksum: $CHECKSUM"
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.FLOWS_REGISTRY_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.FLOWS_REGISTRY_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_BUCKET: registry-useflows-com
+          R2_ENDPOINT_URL: https://5f0d4105431f10a4af1e1f0266f26a97.r2.cloudflarestorage.com
+        run: |
+          R2_KEY="aws-api-${{ inputs.app_name }}"
+          echo "Uploading to R2 bucket: ${R2_BUCKET}"
+          echo "R2 key: core/apps/${R2_KEY}/versions/${{ steps.version.outputs.version }}.tar.gz"
+          
+          aws s3 cp bundle.tar.gz s3://${R2_BUCKET}/core/apps/${R2_KEY}/versions/${{ steps.version.outputs.version }}.tar.gz \
+            --endpoint-url ${R2_ENDPOINT_URL} \
+            --metadata sha256=${{ steps.package.outputs.checksum }}
+          
+          echo "✅ Successfully uploaded ${{ inputs.app_name }} version ${{ steps.version.outputs.version }}"
+
+      - name: Index app versions
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.FLOWS_REGISTRY_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.FLOWS_REGISTRY_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_BUCKET: registry-useflows-com
+          R2_ENDPOINT_URL: https://5f0d4105431f10a4af1e1f0266f26a97.r2.cloudflarestorage.com
+        run: |
+          cd ..
+          mv ${{ inputs.app_name }} aws-api-${{ inputs.app_name }}
+          cd aws-api-${{ inputs.app_name }}
+          curl -o index-app-versions.cjs https://raw.githubusercontent.com/spacelift-io/flows-core-registry/refs/heads/main/.github/scripts/index-app-versions.cjs
+          node index-app-versions.cjs

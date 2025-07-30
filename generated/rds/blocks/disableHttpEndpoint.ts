@@ -1,0 +1,66 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import { RDSClient, DisableHttpEndpointCommand } from "@aws-sdk/client-rds";
+
+const disableHttpEndpoint: AppBlock = {
+  name: "Disable Http Endpoint",
+  description: "Disables the HTTP endpoint for the specified DB cluster.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        ResourceArn: {
+          name: "Resource Arn",
+          description: "The Amazon Resource Name (ARN) of the DB cluster.",
+          type: "string",
+          required: true,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new RDSClient({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command = new DisableHttpEndpointCommand(commandInput as any);
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Disable Http Endpoint Result",
+      description: "Result from DisableHttpEndpoint operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        properties: {
+          ResourceArn: {
+            type: "string",
+            description: "The ARN of the DB cluster.",
+          },
+          HttpEndpointEnabled: {
+            type: "boolean",
+            description:
+              "Indicates whether the HTTP endpoint is enabled or disabled for the DB cluster.",
+          },
+        },
+        additionalProperties: true,
+      },
+    },
+  },
+};
+
+export default disableHttpEndpoint;

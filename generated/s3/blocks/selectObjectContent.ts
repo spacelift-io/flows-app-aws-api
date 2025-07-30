@@ -1,0 +1,237 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import { S3Client, SelectObjectContentCommand } from "@aws-sdk/client-s3";
+
+const selectObjectContent: AppBlock = {
+  name: "Select Object Content",
+  description: "This operation is not supported for directory buckets.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        Bucket: {
+          name: "Bucket",
+          description: "The S3 bucket.",
+          type: "string",
+          required: true,
+        },
+        Key: {
+          name: "Key",
+          description: "The object key.",
+          type: "string",
+          required: true,
+        },
+        SSECustomerAlgorithm: {
+          name: "SSE Customer Algorithm",
+          description:
+            "The server-side encryption (SSE) algorithm used to encrypt the object.",
+          type: "string",
+          required: false,
+        },
+        SSECustomerKey: {
+          name: "SSE Customer Key",
+          description: "The server-side encryption (SSE) customer managed key.",
+          type: "string",
+          required: false,
+        },
+        SSECustomerKeyMD5: {
+          name: "SSE Customer Key MD5",
+          description:
+            "The MD5 server-side encryption (SSE) customer managed key.",
+          type: "string",
+          required: false,
+        },
+        Expression: {
+          name: "Expression",
+          description: "The expression that is used to query the object.",
+          type: "string",
+          required: true,
+        },
+        ExpressionType: {
+          name: "Expression Type",
+          description:
+            "The type of the provided expression (for example, SQL).",
+          type: "string",
+          required: true,
+        },
+        RequestProgress: {
+          name: "Request Progress",
+          description:
+            "Specifies if periodic request progress information should be enabled.",
+          type: {
+            type: "object",
+            properties: {
+              Enabled: {
+                type: "boolean",
+              },
+            },
+            additionalProperties: false,
+          },
+          required: false,
+        },
+        InputSerialization: {
+          name: "Input Serialization",
+          description:
+            "Describes the format of the data in the object that is being queried.",
+          type: {
+            type: "object",
+            properties: {
+              CSV: {
+                type: "object",
+                properties: {
+                  FileHeaderInfo: {
+                    type: "string",
+                  },
+                  Comments: {
+                    type: "string",
+                  },
+                  QuoteEscapeCharacter: {
+                    type: "string",
+                  },
+                  RecordDelimiter: {
+                    type: "string",
+                  },
+                  FieldDelimiter: {
+                    type: "string",
+                  },
+                  QuoteCharacter: {
+                    type: "string",
+                  },
+                  AllowQuotedRecordDelimiter: {
+                    type: "boolean",
+                  },
+                },
+                additionalProperties: false,
+              },
+              CompressionType: {
+                type: "string",
+              },
+              JSON: {
+                type: "object",
+                properties: {
+                  Type: {
+                    type: "string",
+                  },
+                },
+                additionalProperties: false,
+              },
+              Parquet: {
+                type: "object",
+                properties: {},
+                additionalProperties: false,
+              },
+            },
+            additionalProperties: false,
+          },
+          required: true,
+        },
+        OutputSerialization: {
+          name: "Output Serialization",
+          description:
+            "Describes the format of the data that you want Amazon S3 to return in response.",
+          type: {
+            type: "object",
+            properties: {
+              CSV: {
+                type: "object",
+                properties: {
+                  QuoteFields: {
+                    type: "string",
+                  },
+                  QuoteEscapeCharacter: {
+                    type: "string",
+                  },
+                  RecordDelimiter: {
+                    type: "string",
+                  },
+                  FieldDelimiter: {
+                    type: "string",
+                  },
+                  QuoteCharacter: {
+                    type: "string",
+                  },
+                },
+                additionalProperties: false,
+              },
+              JSON: {
+                type: "object",
+                properties: {
+                  RecordDelimiter: {
+                    type: "string",
+                  },
+                },
+                additionalProperties: false,
+              },
+            },
+            additionalProperties: false,
+          },
+          required: true,
+        },
+        ScanRange: {
+          name: "Scan Range",
+          description:
+            "Specifies the byte range of the object to get the records from.",
+          type: {
+            type: "object",
+            properties: {
+              Start: {
+                type: "number",
+              },
+              End: {
+                type: "number",
+              },
+            },
+            additionalProperties: false,
+          },
+          required: false,
+        },
+        ExpectedBucketOwner: {
+          name: "Expected Bucket Owner",
+          description: "The account ID of the expected bucket owner.",
+          type: "string",
+          required: false,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new S3Client({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command = new SelectObjectContentCommand(commandInput as any);
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Select Object Content Result",
+      description: "Result from SelectObjectContent operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        properties: {
+          Payload: {
+            type: "string",
+            description: "The array of results.",
+          },
+        },
+        additionalProperties: true,
+      },
+    },
+  },
+};
+
+export default selectObjectContent;

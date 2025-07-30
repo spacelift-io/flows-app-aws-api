@@ -1,0 +1,63 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import {
+  CloudTrailClient,
+  StopEventDataStoreIngestionCommand,
+} from "@aws-sdk/client-cloudtrail";
+
+const stopEventDataStoreIngestion: AppBlock = {
+  name: "Stop Event Data Store Ingestion",
+  description:
+    "Stops the ingestion of live events on an event data store specified as either an ARN or the ID portion of the ARN.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        EventDataStore: {
+          name: "Event Data Store",
+          description:
+            "The ARN (or ID suffix of the ARN) of the event data store for which you want to stop ingestion.",
+          type: "string",
+          required: true,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new CloudTrailClient({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command = new StopEventDataStoreIngestionCommand(
+          commandInput as any,
+        );
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Stop Event Data Store Ingestion Result",
+      description: "Result from StopEventDataStoreIngestion operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        properties: {},
+        additionalProperties: true,
+      },
+    },
+  },
+};
+
+export default stopEventDataStoreIngestion;

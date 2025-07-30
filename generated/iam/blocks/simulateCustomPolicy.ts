@@ -1,0 +1,286 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import { IAMClient, SimulateCustomPolicyCommand } from "@aws-sdk/client-iam";
+
+const simulateCustomPolicy: AppBlock = {
+  name: "Simulate Custom Policy",
+  description:
+    "Simulate how a set of IAM policies and optionally a resource-based policy works with a list of API operations and Amazon Web Services resources to determine the policies' effective permissions.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        PolicyInputList: {
+          name: "Policy Input List",
+          description:
+            "A list of policy documents to include in the simulation.",
+          type: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+          required: true,
+        },
+        PermissionsBoundaryPolicyInputList: {
+          name: "Permissions Boundary Policy Input List",
+          description: "The IAM permissions boundary policy to simulate.",
+          type: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+          required: false,
+        },
+        ActionNames: {
+          name: "Action Names",
+          description:
+            "A list of names of API operations to evaluate in the simulation.",
+          type: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+          required: true,
+        },
+        ResourceArns: {
+          name: "Resource Arns",
+          description:
+            "A list of ARNs of Amazon Web Services resources to include in the simulation.",
+          type: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+          },
+          required: false,
+        },
+        ResourcePolicy: {
+          name: "Resource Policy",
+          description:
+            "A resource-based policy to include in the simulation provided as a string.",
+          type: "string",
+          required: false,
+        },
+        ResourceOwner: {
+          name: "Resource Owner",
+          description:
+            "An ARN representing the Amazon Web Services account ID that specifies the owner of any simulated resource that does not identify its owner in the resource ARN.",
+          type: "string",
+          required: false,
+        },
+        CallerArn: {
+          name: "Caller Arn",
+          description:
+            "The ARN of the IAM user that you want to use as the simulated caller of the API operations.",
+          type: "string",
+          required: false,
+        },
+        ContextEntries: {
+          name: "Context Entries",
+          description:
+            "A list of context keys and corresponding values for the simulation to use.",
+          type: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                ContextKeyName: {
+                  type: "string",
+                },
+                ContextKeyValues: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                  },
+                },
+                ContextKeyType: {
+                  type: "string",
+                },
+              },
+              additionalProperties: false,
+            },
+          },
+          required: false,
+        },
+        ResourceHandlingOption: {
+          name: "Resource Handling Option",
+          description: "Specifies the type of simulation to run.",
+          type: "string",
+          required: false,
+        },
+        MaxItems: {
+          name: "Max Items",
+          description:
+            "Use this only when paginating results to indicate the maximum number of items you want in the response.",
+          type: "number",
+          required: false,
+        },
+        Marker: {
+          name: "Marker",
+          description:
+            "Use this parameter only when paginating results and only after you receive a response indicating that the results are truncated.",
+          type: "string",
+          required: false,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new IAMClient({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command = new SimulateCustomPolicyCommand(commandInput as any);
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Simulate Custom Policy Result",
+      description: "Result from SimulateCustomPolicy operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        properties: {
+          EvaluationResults: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                EvalActionName: {
+                  type: "string",
+                },
+                EvalResourceName: {
+                  type: "string",
+                },
+                EvalDecision: {
+                  type: "string",
+                },
+                MatchedStatements: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      SourcePolicyId: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      SourcePolicyType: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      StartPosition: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      EndPosition: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                    },
+                    additionalProperties: false,
+                  },
+                },
+                MissingContextValues: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                  },
+                },
+                OrganizationsDecisionDetail: {
+                  type: "object",
+                  properties: {
+                    AllowedByOrganizations: {
+                      type: "boolean",
+                    },
+                  },
+                  additionalProperties: false,
+                },
+                PermissionsBoundaryDecisionDetail: {
+                  type: "object",
+                  properties: {
+                    AllowedByPermissionsBoundary: {
+                      type: "boolean",
+                    },
+                  },
+                  additionalProperties: false,
+                },
+                EvalDecisionDetails: {
+                  type: "object",
+                  additionalProperties: {
+                    type: "string",
+                  },
+                },
+                ResourceSpecificResults: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      EvalResourceName: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      EvalResourceDecision: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      MatchedStatements: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      MissingContextValues: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      EvalDecisionDetails: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      PermissionsBoundaryDecisionDetail: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                    },
+                    required: ["EvalResourceName", "EvalResourceDecision"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["EvalActionName", "EvalDecision"],
+              additionalProperties: false,
+            },
+            description: "The results of the simulation.",
+          },
+          IsTruncated: {
+            type: "boolean",
+            description:
+              "A flag that indicates whether there are more items to return.",
+          },
+          Marker: {
+            type: "string",
+            description:
+              "When IsTruncated is true, this element is present and contains the value to use for the Marker parameter in a subsequent pagination request.",
+          },
+        },
+        additionalProperties: true,
+      },
+    },
+  },
+};
+
+export default simulateCustomPolicy;

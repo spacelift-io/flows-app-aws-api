@@ -1,0 +1,164 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import { IAMClient, GetGroupCommand } from "@aws-sdk/client-iam";
+
+const getGroup: AppBlock = {
+  name: "Get Group",
+  description:
+    "Returns a list of IAM users that are in the specified IAM group.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        GroupName: {
+          name: "Group Name",
+          description: "The name of the group.",
+          type: "string",
+          required: true,
+        },
+        Marker: {
+          name: "Marker",
+          description:
+            "Use this parameter only when paginating results and only after you receive a response indicating that the results are truncated.",
+          type: "string",
+          required: false,
+        },
+        MaxItems: {
+          name: "Max Items",
+          description:
+            "Use this only when paginating results to indicate the maximum number of items you want in the response.",
+          type: "number",
+          required: false,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new IAMClient({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command = new GetGroupCommand(commandInput as any);
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Get Group Result",
+      description: "Result from GetGroup operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        properties: {
+          Group: {
+            type: "object",
+            properties: {
+              Path: {
+                type: "string",
+              },
+              GroupName: {
+                type: "string",
+              },
+              GroupId: {
+                type: "string",
+              },
+              Arn: {
+                type: "string",
+              },
+              CreateDate: {
+                type: "string",
+              },
+            },
+            required: ["Path", "GroupName", "GroupId", "Arn", "CreateDate"],
+            additionalProperties: false,
+            description: "A structure that contains details about the group.",
+          },
+          Users: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                Path: {
+                  type: "string",
+                },
+                UserName: {
+                  type: "string",
+                },
+                UserId: {
+                  type: "string",
+                },
+                Arn: {
+                  type: "string",
+                },
+                CreateDate: {
+                  type: "string",
+                },
+                PasswordLastUsed: {
+                  type: "string",
+                },
+                PermissionsBoundary: {
+                  type: "object",
+                  properties: {
+                    PermissionsBoundaryType: {
+                      type: "string",
+                    },
+                    PermissionsBoundaryArn: {
+                      type: "string",
+                    },
+                  },
+                  additionalProperties: false,
+                },
+                Tags: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      Key: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      Value: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                    },
+                    required: ["Key", "Value"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["Path", "UserName", "UserId", "Arn", "CreateDate"],
+              additionalProperties: false,
+            },
+            description: "A list of users in the group.",
+          },
+          IsTruncated: {
+            type: "boolean",
+            description:
+              "A flag that indicates whether there are more items to return.",
+          },
+          Marker: {
+            type: "string",
+            description:
+              "When IsTruncated is true, this element is present and contains the value to use for the Marker parameter in a subsequent pagination request.",
+          },
+        },
+        required: ["Group", "Users"],
+      },
+    },
+  },
+};
+
+export default getGroup;

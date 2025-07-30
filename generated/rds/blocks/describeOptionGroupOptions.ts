@@ -1,0 +1,231 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import {
+  RDSClient,
+  DescribeOptionGroupOptionsCommand,
+} from "@aws-sdk/client-rds";
+
+const describeOptionGroupOptions: AppBlock = {
+  name: "Describe Option Group Options",
+  description: "Describes all available options for the specified engine.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        EngineName: {
+          name: "Engine Name",
+          description: "The name of the engine to describe options for.",
+          type: "string",
+          required: true,
+        },
+        MajorEngineVersion: {
+          name: "Major Engine Version",
+          description:
+            "If specified, filters the results to include only options for the specified major engine version.",
+          type: "string",
+          required: false,
+        },
+        Filters: {
+          name: "Filters",
+          description: "This parameter isn't currently supported.",
+          type: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                Name: {
+                  type: "string",
+                },
+                Values: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                  },
+                },
+              },
+              required: ["Name", "Values"],
+              additionalProperties: false,
+            },
+          },
+          required: false,
+        },
+        MaxRecords: {
+          name: "Max Records",
+          description:
+            "The maximum number of records to include in the response.",
+          type: "number",
+          required: false,
+        },
+        Marker: {
+          name: "Marker",
+          description:
+            "An optional pagination token provided by a previous request.",
+          type: "string",
+          required: false,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new RDSClient({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command = new DescribeOptionGroupOptionsCommand(
+          commandInput as any,
+        );
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Describe Option Group Options Result",
+      description: "Result from DescribeOptionGroupOptions operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        properties: {
+          OptionGroupOptions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                Name: {
+                  type: "string",
+                },
+                Description: {
+                  type: "string",
+                },
+                EngineName: {
+                  type: "string",
+                },
+                MajorEngineVersion: {
+                  type: "string",
+                },
+                MinimumRequiredMinorEngineVersion: {
+                  type: "string",
+                },
+                PortRequired: {
+                  type: "boolean",
+                },
+                DefaultPort: {
+                  type: "number",
+                },
+                OptionsDependedOn: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                  },
+                },
+                OptionsConflictsWith: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                  },
+                },
+                Persistent: {
+                  type: "boolean",
+                },
+                Permanent: {
+                  type: "boolean",
+                },
+                RequiresAutoMinorEngineVersionUpgrade: {
+                  type: "boolean",
+                },
+                VpcOnly: {
+                  type: "boolean",
+                },
+                SupportsOptionVersionDowngrade: {
+                  type: "boolean",
+                },
+                OptionGroupOptionSettings: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      SettingName: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      SettingDescription: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      DefaultValue: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      ApplyType: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      AllowedValues: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      IsModifiable: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      IsRequired: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      MinimumEngineVersionPerAllowedValue: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                    },
+                    additionalProperties: false,
+                  },
+                },
+                OptionGroupOptionVersions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      Version: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                      IsDefault: {
+                        type: "object",
+                        additionalProperties: true,
+                      },
+                    },
+                    additionalProperties: false,
+                  },
+                },
+                CopyableCrossAccount: {
+                  type: "boolean",
+                },
+              },
+              additionalProperties: false,
+            },
+            description: "List of available option group options.",
+          },
+          Marker: {
+            type: "string",
+            description:
+              "An optional pagination token provided by a previous request.",
+          },
+        },
+        additionalProperties: true,
+      },
+    },
+  },
+};
+
+export default describeOptionGroupOptions;

@@ -1,0 +1,133 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
+
+const deleteObject: AppBlock = {
+  name: "Delete Object",
+  description: "Removes an object from a bucket.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        Bucket: {
+          name: "Bucket",
+          description: "The bucket name of the bucket containing the object.",
+          type: "string",
+          required: true,
+        },
+        Key: {
+          name: "Key",
+          description: "Key name of the object to delete.",
+          type: "string",
+          required: true,
+        },
+        MFA: {
+          name: "MFA",
+          description:
+            "The concatenation of the authentication device's serial number, a space, and the value that is displayed on your authentication device.",
+          type: "string",
+          required: false,
+        },
+        VersionId: {
+          name: "Version Id",
+          description:
+            "Version ID used to reference a specific version of the object.",
+          type: "string",
+          required: false,
+        },
+        RequestPayer: {
+          name: "Request Payer",
+          description:
+            "Confirms that the requester knows that they will be charged for the request.",
+          type: "string",
+          required: false,
+        },
+        BypassGovernanceRetention: {
+          name: "Bypass Governance Retention",
+          description:
+            "Indicates whether S3 Object Lock should bypass Governance-mode restrictions to process this operation.",
+          type: "boolean",
+          required: false,
+        },
+        ExpectedBucketOwner: {
+          name: "Expected Bucket Owner",
+          description: "The account ID of the expected bucket owner.",
+          type: "string",
+          required: false,
+        },
+        IfMatch: {
+          name: "If Match",
+          description:
+            "The If-Match header field makes the request method conditional on ETags.",
+          type: "string",
+          required: false,
+        },
+        IfMatchLastModifiedTime: {
+          name: "If Match Last Modified Time",
+          description:
+            "If present, the object is deleted only if its modification times matches the provided Timestamp.",
+          type: "string",
+          required: false,
+        },
+        IfMatchSize: {
+          name: "If Match Size",
+          description:
+            "If present, the object is deleted only if its size matches the provided size in bytes.",
+          type: "number",
+          required: false,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new S3Client({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command = new DeleteObjectCommand(commandInput as any);
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Delete Object Result",
+      description: "Result from DeleteObject operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        properties: {
+          DeleteMarker: {
+            type: "boolean",
+            description:
+              "Indicates whether the specified object version that was permanently deleted was (true) or was not (false) a delete marker before deletion.",
+          },
+          VersionId: {
+            type: "string",
+            description:
+              "Returns the version ID of the delete marker created as a result of the DELETE operation.",
+          },
+          RequestCharged: {
+            type: "string",
+            description:
+              "If present, indicates that the requester was successfully charged for the request.",
+          },
+        },
+        additionalProperties: true,
+      },
+    },
+  },
+};
+
+export default deleteObject;

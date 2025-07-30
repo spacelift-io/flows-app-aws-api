@@ -1,0 +1,88 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import { WAFClient, GetIPSetCommand } from "@aws-sdk/client-waf";
+
+const getIPSet: AppBlock = {
+  name: "Get IP Set",
+  description: "This is AWS WAF Classic documentation.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        IPSetId: {
+          name: "IP Set Id",
+          description: "The IPSetId of the IPSet that you want to get.",
+          type: "string",
+          required: true,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new WAFClient({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command = new GetIPSetCommand(commandInput as any);
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Get IP Set Result",
+      description: "Result from GetIPSet operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        properties: {
+          IPSet: {
+            type: "object",
+            properties: {
+              IPSetId: {
+                type: "string",
+              },
+              Name: {
+                type: "string",
+              },
+              IPSetDescriptors: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    Type: {
+                      type: "string",
+                    },
+                    Value: {
+                      type: "string",
+                    },
+                  },
+                  required: ["Type", "Value"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["IPSetId", "IPSetDescriptors"],
+            additionalProperties: false,
+            description:
+              "Information about the IPSet that you specified in the GetIPSet request.",
+          },
+        },
+        additionalProperties: true,
+      },
+    },
+  },
+};
+
+export default getIPSet;

@@ -1,0 +1,360 @@
+import { AppBlock, events } from "@slflows/sdk/v1";
+import {
+  RDSClient,
+  DeleteCustomDBEngineVersionCommand,
+} from "@aws-sdk/client-rds";
+
+const deleteCustomDBEngineVersion: AppBlock = {
+  name: "Delete Custom DB Engine Version",
+  description: "Deletes a custom engine version.",
+  inputs: {
+    default: {
+      config: {
+        region: {
+          name: "Region",
+          description: "AWS region for this operation",
+          type: "string",
+          required: true,
+        },
+        Engine: {
+          name: "Engine",
+          description: "The database engine.",
+          type: "string",
+          required: true,
+        },
+        EngineVersion: {
+          name: "Engine Version",
+          description: "The custom engine version (CEV) for your DB instance.",
+          type: "string",
+          required: true,
+        },
+      },
+      onEvent: async (input) => {
+        const { region, ...commandInput } = input.event.inputConfig;
+
+        const client = new RDSClient({
+          region: region,
+          credentials: {
+            accessKeyId: input.app.config.accessKeyId,
+            secretAccessKey: input.app.config.secretAccessKey,
+            sessionToken: input.app.config.sessionToken,
+          },
+        });
+
+        const command = new DeleteCustomDBEngineVersionCommand(
+          commandInput as any,
+        );
+        const response = await client.send(command);
+
+        await events.emit(response || {});
+      },
+    },
+  },
+  outputs: {
+    default: {
+      name: "Delete Custom DB Engine Version Result",
+      description: "Result from DeleteCustomDBEngineVersion operation",
+      possiblePrimaryParents: ["default"],
+      type: {
+        type: "object",
+        properties: {
+          Engine: {
+            type: "string",
+            description: "The name of the database engine.",
+          },
+          EngineVersion: {
+            type: "string",
+            description: "The version number of the database engine.",
+          },
+          DBParameterGroupFamily: {
+            type: "string",
+            description:
+              "The name of the DB parameter group family for the database engine.",
+          },
+          DBEngineDescription: {
+            type: "string",
+            description: "The description of the database engine.",
+          },
+          DBEngineVersionDescription: {
+            type: "string",
+            description: "The description of the database engine version.",
+          },
+          DefaultCharacterSet: {
+            type: "object",
+            properties: {
+              CharacterSetName: {
+                type: "string",
+              },
+              CharacterSetDescription: {
+                type: "string",
+              },
+            },
+            additionalProperties: false,
+            description:
+              "The default character set for new instances of this engine version, if the CharacterSetName parameter of the CreateDBInstance API isn't specified.",
+          },
+          Image: {
+            type: "object",
+            properties: {
+              ImageId: {
+                type: "string",
+              },
+              Status: {
+                type: "string",
+              },
+            },
+            additionalProperties: false,
+            description: "The EC2 image",
+          },
+          DBEngineMediaType: {
+            type: "string",
+            description:
+              "A value that indicates the source media provider of the AMI based on the usage operation.",
+          },
+          SupportedCharacterSets: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                CharacterSetName: {
+                  type: "string",
+                },
+                CharacterSetDescription: {
+                  type: "string",
+                },
+              },
+              additionalProperties: false,
+            },
+            description:
+              "A list of the character sets supported by this engine for the CharacterSetName parameter of the CreateDBInstance operation.",
+          },
+          SupportedNcharCharacterSets: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                CharacterSetName: {
+                  type: "string",
+                },
+                CharacterSetDescription: {
+                  type: "string",
+                },
+              },
+              additionalProperties: false,
+            },
+            description:
+              "A list of the character sets supported by the Oracle DB engine for the NcharCharacterSetName parameter of the CreateDBInstance operation.",
+          },
+          ValidUpgradeTarget: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                Engine: {
+                  type: "string",
+                },
+                EngineVersion: {
+                  type: "string",
+                },
+                Description: {
+                  type: "string",
+                },
+                AutoUpgrade: {
+                  type: "boolean",
+                },
+                IsMajorVersionUpgrade: {
+                  type: "boolean",
+                },
+                SupportedEngineModes: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                  },
+                },
+                SupportsParallelQuery: {
+                  type: "boolean",
+                },
+                SupportsGlobalDatabases: {
+                  type: "boolean",
+                },
+                SupportsBabelfish: {
+                  type: "boolean",
+                },
+                SupportsLimitlessDatabase: {
+                  type: "boolean",
+                },
+                SupportsLocalWriteForwarding: {
+                  type: "boolean",
+                },
+                SupportsIntegrations: {
+                  type: "boolean",
+                },
+              },
+              additionalProperties: false,
+            },
+            description:
+              "A list of engine versions that this database engine version can be upgraded to.",
+          },
+          SupportedTimezones: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                TimezoneName: {
+                  type: "string",
+                },
+              },
+              additionalProperties: false,
+            },
+            description:
+              "A list of the time zones supported by this engine for the Timezone parameter of the CreateDBInstance action.",
+          },
+          ExportableLogTypes: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+            description:
+              "The types of logs that the database engine has available for export to CloudWatch Logs.",
+          },
+          SupportsLogExportsToCloudwatchLogs: {
+            type: "boolean",
+            description:
+              "Indicates whether the engine version supports exporting the log types specified by ExportableLogTypes to CloudWatch Logs.",
+          },
+          SupportsReadReplica: {
+            type: "boolean",
+            description:
+              "Indicates whether the database engine version supports read replicas.",
+          },
+          SupportedEngineModes: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+            description: "A list of the supported DB engine modes.",
+          },
+          SupportedFeatureNames: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+            description: "A list of features supported by the DB engine.",
+          },
+          Status: {
+            type: "string",
+            description:
+              "The status of the DB engine version, either available or deprecated.",
+          },
+          SupportsParallelQuery: {
+            type: "boolean",
+            description:
+              "Indicates whether you can use Aurora parallel query with a specific DB engine version.",
+          },
+          SupportsGlobalDatabases: {
+            type: "boolean",
+            description:
+              "Indicates whether you can use Aurora global databases with a specific DB engine version.",
+          },
+          MajorEngineVersion: {
+            type: "string",
+            description: "The major engine version of the CEV.",
+          },
+          DatabaseInstallationFilesS3BucketName: {
+            type: "string",
+            description:
+              "The name of the Amazon S3 bucket that contains your database installation files.",
+          },
+          DatabaseInstallationFilesS3Prefix: {
+            type: "string",
+            description:
+              "The Amazon S3 directory that contains the database installation files.",
+          },
+          DBEngineVersionArn: {
+            type: "string",
+            description: "The ARN of the custom engine version.",
+          },
+          KMSKeyId: {
+            type: "string",
+            description:
+              "The Amazon Web Services KMS key identifier for an encrypted CEV.",
+          },
+          CreateTime: {
+            type: "string",
+            description: "The creation time of the DB engine version.",
+          },
+          TagList: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                Key: {
+                  type: "string",
+                },
+                Value: {
+                  type: "string",
+                },
+              },
+              additionalProperties: false,
+            },
+            description: "A list of tags.",
+          },
+          SupportsBabelfish: {
+            type: "boolean",
+            description:
+              "Indicates whether the engine version supports Babelfish for Aurora PostgreSQL.",
+          },
+          CustomDBEngineVersionManifest: {
+            type: "string",
+            description:
+              "JSON string that lists the installation files and parameters that RDS Custom uses to create a custom engine version (CEV).",
+          },
+          SupportsLimitlessDatabase: {
+            type: "boolean",
+            description:
+              "Indicates whether the DB engine version supports Aurora Limitless Database.",
+          },
+          SupportsCertificateRotationWithoutRestart: {
+            type: "boolean",
+            description:
+              "Indicates whether the engine version supports rotating the server certificate without rebooting the DB instance.",
+          },
+          SupportedCACertificateIdentifiers: {
+            type: "array",
+            items: {
+              type: "string",
+            },
+            description: "A list of the supported CA certificate identifiers.",
+          },
+          SupportsLocalWriteForwarding: {
+            type: "boolean",
+            description:
+              "Indicates whether the DB engine version supports forwarding write operations from reader DB instances to the writer DB instance in the DB cluster.",
+          },
+          SupportsIntegrations: {
+            type: "boolean",
+            description:
+              "Indicates whether the DB engine version supports zero-ETL integrations with Amazon Redshift.",
+          },
+          ServerlessV2FeaturesSupport: {
+            type: "object",
+            properties: {
+              MinCapacity: {
+                type: "number",
+              },
+              MaxCapacity: {
+                type: "number",
+              },
+            },
+            additionalProperties: false,
+            description:
+              "Specifies any Aurora Serverless v2 properties or limits that differ between Aurora engine versions.",
+          },
+        },
+        additionalProperties: true,
+      },
+    },
+  },
+};
+
+export default deleteCustomDBEngineVersion;
