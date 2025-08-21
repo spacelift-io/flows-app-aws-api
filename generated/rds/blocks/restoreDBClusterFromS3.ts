@@ -320,6 +320,9 @@ const restoreDBClusterFromS3: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new RestoreDBClusterFromS3Command(commandInput as any);

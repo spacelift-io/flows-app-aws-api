@@ -1,5 +1,6 @@
 import { AppBlock, events } from "@slflows/sdk/v1";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const listObjectsV2: AppBlock = {
   name: "List Objects V2",
@@ -105,12 +106,17 @@ const listObjectsV2: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new ListObjectsV2Command(commandInput as any);
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

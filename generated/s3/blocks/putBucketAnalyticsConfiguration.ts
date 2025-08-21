@@ -3,6 +3,7 @@ import {
   S3Client,
   PutBucketAnalyticsConfigurationCommand,
 } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const putBucketAnalyticsConfiguration: AppBlock = {
   name: "Put Bucket Analytics Configuration",
@@ -92,6 +93,9 @@ const putBucketAnalyticsConfiguration: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new PutBucketAnalyticsConfigurationCommand(
@@ -99,7 +103,9 @@ const putBucketAnalyticsConfiguration: AppBlock = {
         );
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

@@ -103,6 +103,9 @@ const describeSnapshots: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new DescribeSnapshotsCommand(commandInput as any);

@@ -1,5 +1,6 @@
 import { AppBlock, events } from "@slflows/sdk/v1";
 import { S3Client, GetBucketPolicyCommand } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const getBucketPolicy: AppBlock = {
   name: "Get Bucket Policy",
@@ -36,12 +37,17 @@ const getBucketPolicy: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new GetBucketPolicyCommand(commandInput as any);
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

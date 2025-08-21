@@ -3,6 +3,7 @@ import {
   S3Client,
   DeleteBucketMetadataTableConfigurationCommand,
 } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const deleteBucketMetadataTableConfiguration: AppBlock = {
   name: "Delete Bucket Metadata Table Configuration",
@@ -42,6 +43,9 @@ const deleteBucketMetadataTableConfiguration: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new DeleteBucketMetadataTableConfigurationCommand(
@@ -49,7 +53,9 @@ const deleteBucketMetadataTableConfiguration: AppBlock = {
         );
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

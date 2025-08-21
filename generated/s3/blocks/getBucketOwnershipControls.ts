@@ -3,6 +3,7 @@ import {
   S3Client,
   GetBucketOwnershipControlsCommand,
 } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const getBucketOwnershipControls: AppBlock = {
   name: "Get Bucket Ownership Controls",
@@ -40,6 +41,9 @@ const getBucketOwnershipControls: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new GetBucketOwnershipControlsCommand(
@@ -47,7 +51,9 @@ const getBucketOwnershipControls: AppBlock = {
         );
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

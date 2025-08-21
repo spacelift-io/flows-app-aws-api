@@ -3,6 +3,7 @@ import {
   S3Client,
   UpdateBucketMetadataInventoryTableConfigurationCommand,
 } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const updateBucketMetadataInventoryTableConfiguration: AppBlock = {
   name: "Update Bucket Metadata Inventory Table Configuration",
@@ -84,6 +85,9 @@ const updateBucketMetadataInventoryTableConfiguration: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command =
@@ -92,7 +96,9 @@ const updateBucketMetadataInventoryTableConfiguration: AppBlock = {
           );
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

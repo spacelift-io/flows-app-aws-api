@@ -1,5 +1,6 @@
 import { AppBlock, events } from "@slflows/sdk/v1";
 import { S3Client, GetBucketLoggingCommand } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const getBucketLogging: AppBlock = {
   name: "Get Bucket Logging",
@@ -38,12 +39,17 @@ const getBucketLogging: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new GetBucketLoggingCommand(commandInput as any);
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

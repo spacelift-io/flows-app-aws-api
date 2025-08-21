@@ -1,5 +1,6 @@
 import { AppBlock, events } from "@slflows/sdk/v1";
 import { S3Client, RestoreObjectCommand } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const restoreObject: AppBlock = {
   name: "Restore Object",
@@ -283,12 +284,17 @@ const restoreObject: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new RestoreObjectCommand(commandInput as any);
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

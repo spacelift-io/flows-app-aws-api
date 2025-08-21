@@ -3,6 +3,7 @@ import {
   S3Client,
   GetBucketAccelerateConfigurationCommand,
 } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const getBucketAccelerateConfiguration: AppBlock = {
   name: "Get Bucket Accelerate Configuration",
@@ -47,6 +48,9 @@ const getBucketAccelerateConfiguration: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new GetBucketAccelerateConfigurationCommand(
@@ -54,7 +58,9 @@ const getBucketAccelerateConfiguration: AppBlock = {
         );
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

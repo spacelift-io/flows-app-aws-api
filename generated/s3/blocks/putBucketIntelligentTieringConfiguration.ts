@@ -3,6 +3,7 @@ import {
   S3Client,
   PutBucketIntelligentTieringConfigurationCommand,
 } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const putBucketIntelligentTieringConfiguration: AppBlock = {
   name: "Put Bucket Intelligent Tiering Configuration",
@@ -119,6 +120,9 @@ const putBucketIntelligentTieringConfiguration: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new PutBucketIntelligentTieringConfigurationCommand(
@@ -126,7 +130,9 @@ const putBucketIntelligentTieringConfiguration: AppBlock = {
         );
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

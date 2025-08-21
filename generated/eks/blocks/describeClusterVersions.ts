@@ -77,6 +77,9 @@ const describeClusterVersions: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new DescribeClusterVersionsCommand(commandInput as any);

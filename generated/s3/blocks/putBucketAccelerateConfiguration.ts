@@ -3,6 +3,7 @@ import {
   S3Client,
   PutBucketAccelerateConfigurationCommand,
 } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const putBucketAccelerateConfiguration: AppBlock = {
   name: "Put Bucket Accelerate Configuration",
@@ -61,6 +62,9 @@ const putBucketAccelerateConfiguration: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new PutBucketAccelerateConfigurationCommand(
@@ -68,7 +72,9 @@ const putBucketAccelerateConfiguration: AppBlock = {
         );
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

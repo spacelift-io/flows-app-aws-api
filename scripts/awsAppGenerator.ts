@@ -285,6 +285,14 @@ class AWSAppGenerator {
       await this.generateMainApp(service, appDir);
       const blocksDir = path.join(appDir, "blocks");
       fs.mkdirSync(blocksDir, { recursive: true });
+      
+      // Generate utility files for S3 service
+      if (service.metadata.serviceId === "S3") {
+        const utilsDir = path.join(appDir, "utils");
+        fs.mkdirSync(utilsDir, { recursive: true });
+        await this.generateS3SerializeUtility(utilsDir);
+      }
+      
       await this.generateActionBlocks(service, blocksDir);
       await this.generatePackageJson(service, appDir);
       await this.generateConfigs(appDir);
@@ -359,6 +367,12 @@ export const app = defineApp({
       required: false,
       sensitive: true,
     },
+    endpoint: {
+      name: "Custom Endpoint",
+      description: "Optional custom endpoint URL (useful for testing or AWS-compatible services like LocalStack)",
+      type: "string",
+      required: false,
+    },
   },
   blocks,
 });
@@ -406,6 +420,12 @@ export const app = defineApp({
       type: "string",
       required: false,
       sensitive: true,
+    },
+    endpoint: {
+      name: "Custom Endpoint",
+      description: "Optional custom endpoint URL (useful for testing or AWS-compatible services like LocalStack)",
+      type: "string",
+      required: false,
     },
   },
   blocks,
@@ -458,8 +478,15 @@ export const app = defineApp({
     const inputConfig = this.generateInputConfig(service, operation);
     const outputType = this.generateOutputType(service, operation);
 
-    const content = `import { AppBlock, events } from "@slflows/sdk/v1";
+    const isS3Service = service.metadata.serviceId === "S3";
+    const imports = isS3Service 
+      ? `import { AppBlock, events } from "@slflows/sdk/v1";
 import { ${clientName}, ${commandName} } from "${packageName}";
+import { serializeAWSResponse } from "../utils/serialize";`
+      : `import { AppBlock, events } from "@slflows/sdk/v1";
+import { ${clientName}, ${commandName} } from "${packageName}";`;
+
+    const content = `${imports}
 
 const ${this.camelCase(operation.name)}: AppBlock = {
   name: "${this.humanizeName(operation.name)}",
@@ -477,12 +504,17 @@ const ${this.camelCase(operation.name)}: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && { endpoint: input.app.config.endpoint }),
         });
 
         const command = new ${commandName}(commandInput as any);
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        ${isS3Service 
+          ? `// Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});`
+          : `await events.emit(response || {});`}
       },
     },
   },
@@ -730,6 +762,49 @@ export default ${this.camelCase(operation.name)};
         }
       });
     });
+  }
+
+  private async generateS3SerializeUtility(utilsDir: string) {
+    const content = `// Utility function to handle AWS SDK response serialization for S3
+export async function serializeAWSResponse(response: any): Promise<any> {
+  if (!response) return {};
+  
+  const { Body, ...safeResponse } = response;
+  const result = { ...safeResponse };
+  
+  // Handle Body stream if it exists
+  if (Body) {
+    try {
+      // Check if Body is a stream
+      if (Body && typeof Body.pipe === 'function') {
+        const chunks = [];
+        for await (const chunk of Body) {
+          chunks.push(chunk);
+        }
+        result.Body = Buffer.concat(chunks).toString('utf-8');
+      } else if (Body && typeof Body.transformToString === 'function') {
+        // Handle AWS SDK v3 streams
+        result.Body = await Body.transformToString();
+      } else {
+        // If Body is already a string or simple value, use it directly
+        result.Body = Body;
+      }
+    } catch (error) {
+      // If stream reading fails, provide metadata about the body
+      result.Body = '[Stream data - could not serialize]';
+      result.BodyMetadata = {
+        type: typeof Body,
+        isStream: typeof Body.pipe === 'function',
+        hasTransformToString: typeof Body.transformToString === 'function'
+      };
+    }
+  }
+  
+  return result;
+}
+`;
+
+    fs.writeFileSync(path.join(utilsDir, "serialize.ts"), content);
   }
 
   // Utility methods

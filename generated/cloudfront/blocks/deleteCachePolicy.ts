@@ -40,6 +40,9 @@ const deleteCachePolicy: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new DeleteCachePolicyCommand(commandInput as any);

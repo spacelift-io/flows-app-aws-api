@@ -25,6 +25,13 @@ export const app = defineApp({
       required: false,
       sensitive: true,
     },
+    endpoint: {
+      name: "Custom Endpoint",
+      description:
+        "Optional custom endpoint URL (useful for testing or AWS-compatible services like LocalStack)",
+      type: "string",
+      required: false,
+    },
   },
   blocks,
 });

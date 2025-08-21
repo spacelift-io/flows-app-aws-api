@@ -3,6 +3,7 @@ import {
   S3Client,
   DeleteBucketIntelligentTieringConfigurationCommand,
 } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const deleteBucketIntelligentTieringConfiguration: AppBlock = {
   name: "Delete Bucket Intelligent Tiering Configuration",
@@ -47,6 +48,9 @@ const deleteBucketIntelligentTieringConfiguration: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new DeleteBucketIntelligentTieringConfigurationCommand(
@@ -54,7 +58,9 @@ const deleteBucketIntelligentTieringConfiguration: AppBlock = {
         );
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

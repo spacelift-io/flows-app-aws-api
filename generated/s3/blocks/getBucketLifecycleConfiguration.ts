@@ -3,6 +3,7 @@ import {
   S3Client,
   GetBucketLifecycleConfigurationCommand,
 } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const getBucketLifecycleConfiguration: AppBlock = {
   name: "Get Bucket Lifecycle Configuration",
@@ -41,6 +42,9 @@ const getBucketLifecycleConfiguration: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new GetBucketLifecycleConfigurationCommand(
@@ -48,7 +52,9 @@ const getBucketLifecycleConfiguration: AppBlock = {
         );
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

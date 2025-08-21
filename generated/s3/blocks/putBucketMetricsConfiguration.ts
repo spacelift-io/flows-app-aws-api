@@ -3,6 +3,7 @@ import {
   S3Client,
   PutBucketMetricsConfigurationCommand,
 } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const putBucketMetricsConfiguration: AppBlock = {
   name: "Put Bucket Metrics Configuration",
@@ -64,6 +65,9 @@ const putBucketMetricsConfiguration: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new PutBucketMetricsConfigurationCommand(
@@ -71,7 +75,9 @@ const putBucketMetricsConfiguration: AppBlock = {
         );
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

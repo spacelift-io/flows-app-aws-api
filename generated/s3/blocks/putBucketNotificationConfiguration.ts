@@ -3,6 +3,7 @@ import {
   S3Client,
   PutBucketNotificationConfigurationCommand,
 } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const putBucketNotificationConfiguration: AppBlock = {
   name: "Put Bucket Notification Configuration",
@@ -162,6 +163,9 @@ const putBucketNotificationConfiguration: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new PutBucketNotificationConfigurationCommand(
@@ -169,7 +173,9 @@ const putBucketNotificationConfiguration: AppBlock = {
         );
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },

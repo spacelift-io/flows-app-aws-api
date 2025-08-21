@@ -3,6 +3,7 @@ import {
   S3Client,
   GetBucketAnalyticsConfigurationCommand,
 } from "@aws-sdk/client-s3";
+import { serializeAWSResponse } from "../utils/serialize";
 
 const getBucketAnalyticsConfiguration: AppBlock = {
   name: "Get Bucket Analytics Configuration",
@@ -46,6 +47,9 @@ const getBucketAnalyticsConfiguration: AppBlock = {
             secretAccessKey: input.app.config.secretAccessKey,
             sessionToken: input.app.config.sessionToken,
           },
+          ...(input.app.config.endpoint && {
+            endpoint: input.app.config.endpoint,
+          }),
         });
 
         const command = new GetBucketAnalyticsConfigurationCommand(
@@ -53,7 +57,9 @@ const getBucketAnalyticsConfiguration: AppBlock = {
         );
         const response = await client.send(command);
 
-        await events.emit(response || {});
+        // Safely serialize response by handling circular references and streams
+        const safeResponse = await serializeAWSResponse(response);
+        await events.emit(safeResponse || {});
       },
     },
   },
