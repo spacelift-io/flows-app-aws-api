@@ -2,7 +2,8 @@
   "scripts": {
     "setup": "git submodule update --init --recursive",
     "update-models": "git submodule update --remote aws-api-models",
-    "generate": "npx tsx scripts/awsAppGenerator.ts ./aws-api-models ./generated",
+    "generate": "npx tsx scripts/awsAppGenerator.ts",
+    "generate:service": "npx tsx scripts/awsAppGenerator.ts",
     "icon": "npx tsx scripts/processIcon.ts"
   },
   "dependencies": {
