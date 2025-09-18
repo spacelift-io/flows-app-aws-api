@@ -490,7 +490,7 @@ import { ${clientName}, ${commandName} } from "${packageName}";`;
 
 const ${this.camelCase(operation.name)}: AppBlock = {
   name: "${this.humanizeName(operation.name)}",
-  description: "${this.getOperationDescription(operation)}",
+  description: \`${this.getOperationDescription(operation)}\`,
   inputs: {
     default: {
       config: ${JSON.stringify(inputConfig, null, 8).replace(/"/g, '"')},
@@ -1072,6 +1072,8 @@ const SERVICES_TO_GENERATE = [
   "kms",
   "lambda",
   "rds",
+  "redshift",
+  "redshift-data",
   "route-53",
   "s3",
   "secrets-manager",
@@ -1089,25 +1091,43 @@ async function main() {
   const modelsPath = "./aws-api-models";
   const outputDir = "./generated";
 
+  // Check for command line arguments
+  const args = process.argv.slice(2);
+  const serviceName = args[0];
+
   try {
     await generator.loadModels(modelsPath);
 
-    console.log(
-      `Generating apps for ${SERVICES_TO_GENERATE.length} AWS services...`
-    );
-
-    for (const serviceName of SERVICES_TO_GENERATE) {
-      try {
-        console.log(`\n📦 Generating ${serviceName}...`);
-        await generator.generateServiceApp(serviceName, outputDir);
-        console.log(`✅ Successfully generated ${serviceName}`);
-      } catch (error: any) {
-        console.error(`❌ Failed to generate ${serviceName}:`, error.message);
-        // Continue with other services instead of failing completely
+    if (serviceName) {
+      // Generate single service
+      if (!SERVICES_TO_GENERATE.includes(serviceName as any)) {
+        console.error(`❌ Service '${serviceName}' is not in the supported services list.`);
+        console.log(`Supported services: ${SERVICES_TO_GENERATE.join(', ')}`);
+        process.exit(1);
       }
-    }
 
-    console.log("\n🎉 Generation complete!");
+      console.log(`📦 Generating ${serviceName}...`);
+      await generator.generateServiceApp(serviceName, outputDir);
+      console.log(`✅ Successfully generated ${serviceName}`);
+    } else {
+      // Generate all services
+      console.log(
+        `Generating apps for ${SERVICES_TO_GENERATE.length} AWS services...`
+      );
+
+      for (const serviceName of SERVICES_TO_GENERATE) {
+        try {
+          console.log(`\n📦 Generating ${serviceName}...`);
+          await generator.generateServiceApp(serviceName, outputDir);
+          console.log(`✅ Successfully generated ${serviceName}`);
+        } catch (error: any) {
+          console.error(`❌ Failed to generate ${serviceName}:`, error.message);
+          // Continue with other services instead of failing completely
+        }
+      }
+
+      console.log("\n🎉 Generation complete!");
+    }
   } catch (error: any) {
     console.error("❌ Generation failed:", error.message);
     process.exit(1);
